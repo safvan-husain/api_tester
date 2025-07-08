@@ -6,11 +6,18 @@ import { Request, RequestModel } from './entities/request.entity'; // Import Req
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Request.name, schema: RequestModel.schema }]), // Changed
+    MongooseModule.forFeature([
+      { name: Request.name, schema: RequestModel.schema },
+    ]), // Changed
   ],
   controllers: [RequestController],
   providers: [RequestService],
   // Export service and MongooseModule for CheckpointModule
-  exports: [RequestService, MongooseModule.forFeature([{ name: Request.name, schema: RequestModel.schema }])],
+  exports: [
+    RequestService,
+    MongooseModule.forFeature([
+      { name: Request.name, schema: RequestModel.schema },
+    ]),
+  ],
 })
 export class RequestModule {}

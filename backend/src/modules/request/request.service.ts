@@ -20,7 +20,9 @@ export class RequestService {
   constructor(
     @InjectModel(Request.name)
     private readonly requestModel: ReturnModelType<typeof Request>,
-  ) {}
+  ) {
+    this.logger.log(`requestModel: ${this.requestModel.toString()}`);
+  }
 
   /**
    * Creates a new API request record in the database.
@@ -30,14 +32,21 @@ export class RequestService {
    * @throws Error if database operation fails.
    */
   async create(createRequestDto: CreateRequestDto): Promise<Request> {
-    this.logger.log(`Creating new request: ${JSON.stringify(createRequestDto)}`);
+    this.logger.log(
+      `Creating new request: ${JSON.stringify(createRequestDto)}`,
+    );
     try {
       const newRequest = new this.requestModel(createRequestDto);
       const savedRequest = await newRequest.save();
-      this.logger.log(`Successfully created request with ID: ${savedRequest._id}`);
+      this.logger.log(
+        `Successfully created request with ID: ${savedRequest._id.toString()}`,
+      );
       return savedRequest;
     } catch (error) {
-      this.logger.error(`Failed to create request: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create request: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -54,7 +63,10 @@ export class RequestService {
       this.logger.log(`Found ${requests.length} requests`);
       return requests;
     } catch (error) {
-      this.logger.error(`Failed to fetch all requests: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to fetch all requests: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -78,7 +90,10 @@ export class RequestService {
       return request;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to fetch request with ID ${id}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to fetch request with ID ${id}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -97,10 +112,16 @@ export class RequestService {
     id: string,
     updateRequestDto: UpdateRequestDto,
   ): Promise<Request> {
-    this.logger.log(`Updating request with ID: ${id} with data: ${JSON.stringify(updateRequestDto)}`);
+    this.logger.log(
+      `Updating request with ID: ${id} with data: ${JSON.stringify(updateRequestDto)}`,
+    );
     try {
       const updatedRequest = await this.requestModel
-        .findByIdAndUpdate(id, { ...updateRequestDto, unsaved: true }, { new: true })
+        .findByIdAndUpdate(
+          id,
+          { ...updateRequestDto, unsaved: true },
+          { new: true },
+        )
         .exec();
       if (!updatedRequest) {
         this.logger.warn(`Request with ID "${id}" not found for update`);
@@ -110,7 +131,10 @@ export class RequestService {
       return updatedRequest;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to update request with ID ${id}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to update request with ID ${id}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -135,7 +159,10 @@ export class RequestService {
       return { deleted: true, id };
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to remove request with ID ${id}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to remove request with ID ${id}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -151,20 +178,29 @@ export class RequestService {
    * @throws Error if database operation fails for other reasons.
    */
   async setUnsavedStatus(id: string, status: boolean): Promise<Request> {
-    this.logger.log(`Setting unsaved status to ${status} for request with ID: ${id}`);
+    this.logger.log(
+      `Setting unsaved status to ${status} for request with ID: ${id}`,
+    );
     try {
       const request = await this.requestModel
         .findByIdAndUpdate(id, { unsaved: status }, { new: true })
         .exec();
       if (!request) {
-        this.logger.warn(`Request with ID "${id}" not found for updating unsaved status`);
+        this.logger.warn(
+          `Request with ID "${id}" not found for updating unsaved status`,
+        );
         throw new NotFoundException(`Request with ID "${id}" not found`);
       }
-      this.logger.log(`Successfully set unsaved status for request with ID: ${id}`);
+      this.logger.log(
+        `Successfully set unsaved status for request with ID: ${id}`,
+      );
       return request;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to set unsaved status for request ID ${id}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to set unsaved status for request ID ${id}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }

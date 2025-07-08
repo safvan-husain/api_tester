@@ -16,7 +16,8 @@ export class ConfigService {
   constructor() {
     this.envConfig = {
       port: parseInt(process.env.PORT || '3001', 10),
-      mongodb_uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/api-tester',
+      mongodb_uri:
+        process.env.MONGODB_URI || 'mongodb://0.0.0.0:27017/api-tester',
     };
   }
 

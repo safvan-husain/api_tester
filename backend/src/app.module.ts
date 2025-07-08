@@ -10,9 +10,10 @@ import { CheckpointModule } from './modules/checkpoint/checkpoint.module';
 @Module({
   imports: [
     ConfigModule,
-    MongooseModule.forRootAsync({ // Changed
+    MongooseModule.forRootAsync({
+      // Changed
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         uri: configService.get('mongodb_uri'),
         // Add other Mongoose options here if needed e.g.
         // useNewUrlParser: true, // No longer needed in recent Mongoose versions

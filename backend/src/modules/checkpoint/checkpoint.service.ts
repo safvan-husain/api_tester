@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ReturnModelType } from '@typegoose/typegoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Checkpoint } from './entities/checkpoint.entity';
@@ -39,13 +44,21 @@ export class CheckpointService {
    */
   async create(createCheckpointDto: CreateCheckpointDto): Promise<Checkpoint> {
     const { requestId, name } = createCheckpointDto;
-    this.logger.log(`Creating checkpoint for request ID: ${requestId}, name: "${name}"`);
+    this.logger.log(
+      `Creating checkpoint for request ID: ${requestId}, name: "${name}"`,
+    );
 
     try {
-      const requestToCheckpoint = await this.apiRequestModel.findById(requestId).exec();
+      const requestToCheckpoint = await this.apiRequestModel
+        .findById(requestId)
+        .exec();
       if (!requestToCheckpoint) {
-        this.logger.warn(`Request with ID "${requestId}" not found for checkpoint creation.`);
-        throw new NotFoundException(`Request with ID "${requestId}" not found.`);
+        this.logger.warn(
+          `Request with ID "${requestId}" not found for checkpoint creation.`,
+        );
+        throw new NotFoundException(
+          `Request with ID "${requestId}" not found.`,
+        );
       }
 
       const checkpointData = {
@@ -61,22 +74,29 @@ export class CheckpointService {
         data: checkpointData,
       });
       const savedCheckpoint = await newCheckpoint.save();
-      this.logger.log(`Successfully created checkpoint with ID: ${savedCheckpoint._id} for request ID: ${requestId}`);
+      this.logger.log(
+        `Successfully created checkpoint with ID: ${savedCheckpoint._id.toString()} for request ID: ${requestId}`,
+      );
 
       try {
         await this.requestService.setUnsavedStatus(requestId, false);
-        this.logger.log(`Successfully set unsaved status to false for request ID: ${requestId}`);
+        this.logger.log(
+          `Successfully set unsaved status to false for request ID: ${requestId}`,
+        );
       } catch (error) {
         this.logger.error(
-          `Failed to set unsaved status to false for request ${requestId} after creating checkpoint ${savedCheckpoint._id}. Error: ${error.message}`,
-           error.stack
+          `Failed to set unsaved status to false for request ${requestId} after creating checkpoint ${savedCheckpoint._id.toString()}. Error: ${error?.message}`,
+          error?.stack,
         );
       }
 
       return savedCheckpoint;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to create checkpoint for request ID ${requestId}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to create checkpoint for request ID ${requestId}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -92,17 +112,31 @@ export class CheckpointService {
   async findAllForRequest(requestId: string): Promise<Checkpoint[]> {
     this.logger.log(`Fetching all checkpoints for request ID: ${requestId}`);
     try {
-      const requestExists = await this.apiRequestModel.findById(requestId).exec();
+      const requestExists = await this.apiRequestModel
+        .findById(requestId)
+        .exec();
       if (!requestExists) {
-        this.logger.warn(`Request with ID "${requestId}" not found, cannot retrieve checkpoints.`);
-        throw new NotFoundException(`Request with ID "${requestId}" not found, cannot retrieve checkpoints.`);
+        this.logger.warn(
+          `Request with ID "${requestId}" not found, cannot retrieve checkpoints.`,
+        );
+        throw new NotFoundException(
+          `Request with ID "${requestId}" not found, cannot retrieve checkpoints.`,
+        );
       }
-      const checkpoints = await this.checkpointModel.find({ requestId }).sort({ createdAt: -1 }).exec();
-      this.logger.log(`Found ${checkpoints.length} checkpoints for request ID: ${requestId}`);
+      const checkpoints = await this.checkpointModel
+        .find({ requestId })
+        .sort({ createdAt: -1 })
+        .exec();
+      this.logger.log(
+        `Found ${checkpoints.length} checkpoints for request ID: ${requestId}`,
+      );
       return checkpoints;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to fetch checkpoints for request ID ${requestId}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to fetch checkpoints for request ID ${requestId}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -120,14 +154,22 @@ export class CheckpointService {
   async rollback(checkpointId: string): Promise<ApiRequest> {
     this.logger.log(`Rolling back to checkpoint ID: ${checkpointId}`);
     try {
-      const checkpoint = await this.checkpointModel.findById(checkpointId).exec();
+      const checkpoint = await this.checkpointModel
+        .findById(checkpointId)
+        .exec();
       if (!checkpoint) {
-        this.logger.warn(`Checkpoint with ID "${checkpointId}" not found for rollback.`);
-        throw new NotFoundException(`Checkpoint with ID "${checkpointId}" not found.`);
+        this.logger.warn(
+          `Checkpoint with ID "${checkpointId}" not found for rollback.`,
+        );
+        throw new NotFoundException(
+          `Checkpoint with ID "${checkpointId}" not found.`,
+        );
       }
 
       const { requestId, data } = checkpoint;
-      this.logger.log(`Found checkpoint. Rolling back request ID: ${requestId}`);
+      this.logger.log(
+        `Found checkpoint. Rolling back request ID: ${JSON.stringify(requestId)}`,
+      );
 
       const updatedRequest = await this.apiRequestModel
         .findByIdAndUpdate(
@@ -138,16 +180,28 @@ export class CheckpointService {
         .exec();
 
       if (!updatedRequest) {
-        this.logger.error(`Failed to find and update original request ID "${requestId}" during rollback from checkpoint ID "${checkpointId}".`);
+        this.logger.error(
+          `Failed to find and update original request ID "${JSON.stringify(requestId)}" during rollback from checkpoint ID "${checkpointId}".`,
+        );
         throw new InternalServerErrorException(
-          `Failed to find and update original request with ID "${requestId}" during rollback.`,
+          `Failed to find and update original request with ID "${JSON.stringify(requestId)}" during rollback.`,
         );
       }
-      this.logger.log(`Successfully rolled back request ID: ${requestId} to checkpoint ID: ${checkpointId}`);
+      this.logger.log(
+        `Successfully rolled back request ID: ${JSON.stringify(requestId)} to checkpoint ID: ${checkpointId}`,
+      );
       return updatedRequest;
     } catch (error) {
-      if (!(error instanceof NotFoundException || error instanceof InternalServerErrorException)) {
-        this.logger.error(`Failed to rollback to checkpoint ID ${checkpointId}: ${error.message}`, error.stack);
+      if (
+        !(
+          error instanceof NotFoundException ||
+          error instanceof InternalServerErrorException
+        )
+      ) {
+        this.logger.error(
+          `Failed to rollback to checkpoint ID ${checkpointId}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }
@@ -172,7 +226,10 @@ export class CheckpointService {
       return { deleted: true, id };
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        this.logger.error(`Failed to remove checkpoint ID ${id}: ${error.message}`, error.stack);
+        this.logger.error(
+          `Failed to remove checkpoint ID ${id}: ${error.message}`,
+          error.stack,
+        );
       }
       throw error;
     }

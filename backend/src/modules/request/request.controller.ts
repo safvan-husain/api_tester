@@ -23,7 +23,13 @@ import { Request } from './entities/request.entity';
  * Endpoints are validated using global ValidationPipe and specific DTOs.
  */
 @Controller('requests')
-@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+@UsePipes(
+  new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  }),
+)
 export class RequestController {
   private readonly logger = new Logger(RequestController.name);
 
@@ -41,9 +47,13 @@ export class RequestController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createRequestDto: CreateRequestDto): Promise<Request> {
-    this.logger.log(`Received POST /requests request with body: ${JSON.stringify(createRequestDto)}`);
+    this.logger.log(
+      `Received POST /requests request with body: ${JSON.stringify(createRequestDto)}`,
+    );
     const result = await this.requestService.create(createRequestDto);
-    this.logger.log(`Responding to POST /requests with status 201, ID: ${result._id}`);
+    this.logger.log(
+      `Responding to POST /requests with status 201, ID: ${result._id.toString()}`,
+    );
     return result;
   }
 
@@ -81,8 +91,13 @@ export class RequestController {
    * @throws NotFoundException if the request with the given ID is not found.
    */
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateRequestDto: UpdateRequestDto): Promise<Request> {
-    this.logger.log(`Received PATCH /requests/${id} request with body: ${JSON.stringify(updateRequestDto)}`);
+  async update(
+    @Param('id') id: string,
+    @Body() updateRequestDto: UpdateRequestDto,
+  ): Promise<Request> {
+    this.logger.log(
+      `Received PATCH /requests/${id} request with body: ${JSON.stringify(updateRequestDto)}`,
+    );
     const result = await this.requestService.update(id, updateRequestDto);
     this.logger.log(`Responding to PATCH /requests/${id}`);
     return result;

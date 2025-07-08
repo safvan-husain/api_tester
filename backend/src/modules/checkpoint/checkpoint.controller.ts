@@ -22,7 +22,13 @@ import { Request as ApiRequest } from '../request/entities/request.entity';
  * Endpoints are validated using global ValidationPipe and specific DTOs.
  */
 @Controller('checkpoints')
-@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+@UsePipes(
+  new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  }),
+)
 export class CheckpointController {
   private readonly logger = new Logger(CheckpointController.name);
 
@@ -39,10 +45,16 @@ export class CheckpointController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createCheckpointDto: CreateCheckpointDto): Promise<Checkpoint> {
-    this.logger.log(`Received POST /checkpoints request with body: ${JSON.stringify(createCheckpointDto)}`);
+  async create(
+    @Body() createCheckpointDto: CreateCheckpointDto,
+  ): Promise<Checkpoint> {
+    this.logger.log(
+      `Received POST /checkpoints request with body: ${JSON.stringify(createCheckpointDto)}`,
+    );
     const result = await this.checkpointService.create(createCheckpointDto);
-    this.logger.log(`Responding to POST /checkpoints with status 201, ID: ${result._id}`);
+    this.logger.log(
+      `Responding to POST /checkpoints with status 201, ID: ${result._id.toString()}`,
+    );
     return result;
   }
 
@@ -52,10 +64,14 @@ export class CheckpointController {
    * @returns A promise that resolves to an array of Checkpoint entities.
    */
   @Get('request/:requestId')
-  async findAllForRequest(@Param('requestId') requestId: string): Promise<Checkpoint[]> {
+  async findAllForRequest(
+    @Param('requestId') requestId: string,
+  ): Promise<Checkpoint[]> {
     this.logger.log(`Received GET /checkpoints/request/${requestId} request`);
     const results = await this.checkpointService.findAllForRequest(requestId);
-    this.logger.log(`Responding to GET /checkpoints/request/${requestId} with ${results.length} items`);
+    this.logger.log(
+      `Responding to GET /checkpoints/request/${requestId} with ${results.length} items`,
+    );
     return results;
   }
 

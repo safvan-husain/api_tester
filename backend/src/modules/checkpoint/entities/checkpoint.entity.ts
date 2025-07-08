@@ -1,6 +1,12 @@
-import { prop, getModelForClass, Ref, modelOptions } from '@typegoose/typegoose';
+import {
+  prop,
+  getModelForClass,
+  Ref,
+  modelOptions,
+} from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { Request } from '../../request/entities/request.entity';
+import { Types } from 'mongoose';
 
 /**
  * Represents a saved state (checkpoint) of an API request.
@@ -15,6 +21,8 @@ import { Request } from '../../request/entities/request.entity';
   },
 })
 export class Checkpoint extends TimeStamps {
+  @prop({ type: Types.ObjectId, auto: true })
+  public _id!: Types.ObjectId;
   /**
    * A reference to the original Request entity this checkpoint belongs to.
    */

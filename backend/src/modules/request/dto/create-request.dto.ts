@@ -5,6 +5,8 @@ import { IsString, IsUrl, IsEnum, IsObject, IsOptional } from 'class-validator';
  * Defines the expected shape and validation rules for request creation payload.
  */
 export class CreateRequestDto {
+  @IsString()
+  name: string;
   /**
    * The URL for the API request. Must be a valid URL string.
    * @example "https://api.example.com/data"

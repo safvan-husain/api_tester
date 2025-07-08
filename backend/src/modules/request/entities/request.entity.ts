@@ -1,5 +1,6 @@
 import { prop, getModelForClass, modelOptions } from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
+import { Types } from 'mongoose';
 
 /**
  * Represents an API request made by the user.
@@ -14,6 +15,11 @@ import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
   },
 })
 export class Request extends TimeStamps {
+  @prop({ type: Types.ObjectId, auto: true })
+  public _id!: Types.ObjectId;
+
+  @prop({ required: true, trim: true })
+  public name!: string;
   /**
    * The URL of the API request.
    * @example 'https://api.example.com/users'
