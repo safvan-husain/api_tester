@@ -1,11 +1,19 @@
 import Image from "next/image";
+import RequestList from "@/components/features/request-list"; // Import the RequestList component
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
+    <div className="flex min-h-screen font-[family-name:var(--font-geist-sans)]">
+      {/* Sidebar */}
+      <aside className="w-1/4 bg-gray-100 p-4 border-r border-gray-300">
+        <RequestList />
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 grid grid-rows-[20px_1fr_20px] items-center justify-items-center p-8 pb-20 gap-16 sm:p-20">
+        <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+          <Image
+            className="dark:invert"
           src="/next.svg"
           alt="Next.js logo"
           width={180}

@@ -18,8 +18,9 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".", // Important for path aliases to work relative to root
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./*"] // Maps @/ to the root of the frontend directory
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
