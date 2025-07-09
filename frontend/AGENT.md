@@ -16,17 +16,51 @@ This document outlines the best practices, coding style, and testing guidelines 
 ## Project Structure
 Adopt a modular structure to keep the codebase organized and maintainable:
 ```
-app/
+frontend/
+├── app/
+│   ├── layout.tsx          # Root layout (required for App Router)
+│   ├── page.tsx            # Home page (`/`)
+│   ├── globals.css         # Global CSS styles
+│   ├── favicon.ico         # Favicon
+│   ├── api/                # Optional: Proxy API routes (if needed)
+│   │   └── proxy/
+│   │       └── route.ts    # Proxy to backend (e.g., `/api/proxy/hello`)
+│   ├── dashboard/          # Example nested route
+│   │   ├── layout.tsx      # Layout for `/dashboard`
+│   │   └── page.tsx        # Page for `/dashboard`
+│   ├── [slug]/             # Dynamic route (e.g., `/post/[slug]`)
+│   │   └── page.tsx        # Page for dynamic route
 ├── components/
 │   ├── ui/                 # shadcn/ui components
-│   ├── shared/             # Reusable components
-│   └── features/           # Feature-specific components
+│   ├── shared/             # Reusable components (e.g., Button, Modal)
+│   └── features/           # Feature-specific components (e.g., AuthForm, DashboardChart)
 ├── hooks/                  # Custom React hooks
-├── lib/                    # Utilities, Axios setup, React Query config
-├── pages/                  # Next.js pages or API routes
-├── public/                 # Static assets
-├── styles/                 # Global styles, Tailwind config
-└── tests/                  # Test files
+├── lib/
+│   ├── api/                # API client (Axios/Fetch setup)
+│   │   └── client.ts       # Axios instance or Fetch wrapper
+│   ├── query/              # React Query setup (e.g., QueryClient)
+│   │   └── index.ts
+│   └── utils.ts            # General utilities
+├── public/
+│   ├── images/             # Static images
+│   ├── fonts/              # Custom fonts
+│   └── favicon.ico         # Static favicon
+├── styles/
+│   ├── tailwind.css        # Tailwind CSS file
+│   └── custom.css          # Additional custom styles
+├── tests/
+│   ├── unit/               # Unit tests
+│   ├── integration/        # Integration tests
+│   └── e2e/                # End-to-end tests
+├── middleware.ts           # Middleware (e.g., auth, redirects)
+├── next.config.mjs         # Next.js configuration
+├── package.json            # Dependencies and scripts
+├── tsconfig.json           # TypeScript config (if using TypeScript)
+├── tailwind.config.js      # Tailwind config (if using Tailwind)
+├── .env.local              # Environment variables (e.g., API_URL)
+├── .gitignore              # Git ignore
+└── AGENT.md               # this file.
+
 ```
 
 - Use App Router (`app/`) for Next.js routing.
