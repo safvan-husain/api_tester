@@ -46,7 +46,7 @@ const RequestList: React.FC = () => {
             <Card key={request.id}>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between space-x-2">
-                  <span className="font-semibold truncate flex-1" title={request.name}>
+                  <span className="font-semibold truncate flex-1 !text-red-700" title={request.name} >
                     {request.name}
                   </span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${getMethodClass(request.method)}`}>
