@@ -3,7 +3,7 @@
 import React from 'react';
 import { PlusIcon } from 'lucide-react';
 import { useRequestStore } from '../../store/request-store';
-import { IRequest } from '../../../lib/api/requests';
+import { IRequest } from '@/lib/api/requests';
 import { ScrollArea } from '@/components/ui/scroll-area';
 // import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

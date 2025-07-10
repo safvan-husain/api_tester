@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useGetRequests, IRequest } from '../../../lib/api/requests';
+import { useGetRequests, IRequest } from '@/lib/api/requests';
 import { ScrollArea } from '@/components/ui/scroll-area'; // Assuming shadcn/ui scroll-area
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Assuming shadcn/ui card
 

@@ -91,7 +91,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
             name: 'New Request',
             method: 'GET',
             url: '',
-            body: '',
+            body: {},
             // headers: {}, // Initialize if needed
         };
         // We don't add to local state immediately.

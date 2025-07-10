@@ -23,14 +23,14 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [method, setMethod] = useState('GET');
-    const [body, setBody] = useState('');
+    const [body, setBody] = useState<Record<string, any> | string>('');
 
     useEffect(() => {
         if (selectedRequest) {
             setName(selectedRequest.name || 'New Request');
             setUrl(selectedRequest.url || '');
             setMethod(selectedRequest.method || 'GET');
-            setBody(selectedRequest.body || '');
+            setBody(selectedRequest.body ? JSON.stringify(selectedRequest.body, null, 2) : '');
         } else {
             setName('New Request');
             setUrl('');
@@ -64,7 +64,14 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                 case 'name': setName(value); currentLocalState.name = value; break;
                 case 'url': setUrl(value); currentLocalState.url = value; break;
                 case 'method': setMethod(value); currentLocalState.method = value; break;
-                case 'body': setBody(value); currentLocalState.body = value; break;
+                case 'body': 
+                    setBody(value); 
+                    try {
+                        currentLocalState.body = JSON.parse(value);
+                    } catch (e) {
+                        // handle invalid json
+                    }
+                    break;
             }
 
             // Prepare payload for debounced update
@@ -73,7 +80,7 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                 name: field === 'name' ? value : name,
                 url: field === 'url' ? value : url,
                 method: field === 'method' ? value : method,
-                body: field === 'body' ? value : body,
+                body: field === 'body' ? JSON.parse(value) : body,
             };
             // If it's a new request (ID is a draft ID), don't try to update backend yet.
             // It should be saved first via "Add New Request" which creates it on backend.
@@ -102,7 +109,7 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
             // as debounced update might not have fired yet.
             const payloadForSend: UpdateRequestPayload = {
                 id: selectedRequest.id,
-                name, url, method, body
+                name, url, method, body: typeof body === 'string' ? JSON.parse(body) : body
             };
 
             // If it's a new request that hasn't been saved to backend yet, this 'Send' could trigger its first save.
@@ -209,10 +216,10 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                 </TabsContent>
                 <TabsContent value="body" className="flex-grow flex flex-col">
                     <Textarea
-                        placeholder="Enter request body (e.g., JSON, XML)"
-                        value={body}
+                        placeholder='Enter request body (e.g., JSON, XML)'
+                        value={typeof body === 'string' ? body : JSON.stringify(body, null, 2)}
                         onChange={handleBodyChange}
-                        className="flex-grow resize-none"
+                        className='flex-grow resize-none'
                         disabled={isMutating}
                     />
                 </TabsContent>

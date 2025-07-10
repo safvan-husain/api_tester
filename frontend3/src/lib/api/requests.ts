@@ -13,7 +13,7 @@ export interface IRequest {
   name: string;
   url: string;
   method: string;
-  body?: string; // Optional body
+  body?: Record<string, any>; // Optional body, now an object
   headers?: Record<string, string>; // Optional headers
   createdAt?: string; // Optional, might be assigned by backend
   updatedAt?: string; // Optional, might be assigned by backend
@@ -77,6 +77,7 @@ export const useUpdateRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<IRequest, Error, UpdateRequestPayload>({
     mutationFn: updateRequestApi,
+
     onSuccess: (updatedRequest) => {
       // Invalidate and refetch the specific request and the list
       queryClient.invalidateQueries({ queryKey: ['requests'] });
