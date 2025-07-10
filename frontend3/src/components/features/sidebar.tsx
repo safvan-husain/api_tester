@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { PlusIcon } from 'lucide-react';
-import { useRequestStore } from '../../../store/request-store';
-import { IRequest } from '../../../../lib/api/requests';
+import { useRequestStore } from '../../store/request-store';
+import { IRequest } from '../../../lib/api/requests';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface SidebarProps {
@@ -45,10 +45,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddNewRequest }) => {
     return (
         <div className="flex flex-col h-full border-r">
             <div className="p-4 border-b">
-                <Button onClick={onAddNewRequest} className="w-full" disabled={isMutating}>
+                {/*<Button onClick={onAddNewRequest} className="w-full" disabled={isMutating}>*/}
                     <PlusIcon className="mr-2 h-4 w-4" />
                     {isMutating ? 'Adding...' : 'Add New Request'}
-                </Button>
+                {/*</Button>*/}
             </div>
             <ScrollArea className="flex-grow">
                 <div className="p-4 space-y-2">

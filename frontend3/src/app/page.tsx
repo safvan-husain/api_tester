@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react'; // useEffect removed as it's in useInitializeRequestStore
-import Sidebar from '@/components/features/sidebar/sidebar';
-import RequestDetailsTabs from '@/components/features/request-details/request-details-tabs';
-import { useInitializeRequestStore, useRequestStore } from '../../store/request-store';
+import Sidebar from '@/components/features/sidebar'; // Corrected import path
+import RequestDetailsTabs from '../components/features/request-details-tabs';
+import { useInitializeRequestStore, useRequestStore } from '../store/request-store';
 import { useCreateRequest, useUpdateRequest } from '../../lib/api/requests';
-import { Toaster } from "@/components/ui/sonner" // For displaying success/error messages
+import { Toaster } from "sonner" // For displaying success/error messages
 import { toast } from "sonner"
 
 
@@ -24,8 +24,8 @@ export default function Home() {
         try {
             await addNewRequestAndSave(createRequestMutation.mutateAsync);
             toast.success("Request created successfully!");
-        } catch (error) {
-            toast.error(`Failed to create request: ${error.message || 'Unknown error'}`);
+        } catch (error: any) {
+            toast.error(`Failed to create request: ${error?.message || 'Unknown error'}`);
             console.error("Create request failed:", error);
         }
     };

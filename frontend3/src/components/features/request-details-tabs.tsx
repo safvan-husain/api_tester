@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { IRequest, UpdateRequestPayload } from '../../../../lib/api/requests';
-import { useRequestStore } from '../../../store/request-store';
+import { IRequest, UpdateRequestPayload } from '../../../lib/api/requests';
+import { useRequestStore } from '@/store/request-store';
 import { toast } from "sonner"; // For displaying success/error messages
 import { debounce } from 'lodash'; // For debouncing updates
 
