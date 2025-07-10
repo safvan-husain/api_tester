@@ -13,7 +13,7 @@ export interface IRequest {
   name: string;
   url: string;
   method: string;
-  body?: Record<string, any>; // Optional body, now an object
+  body?: string; // Optional body, now an object
   headers?: Record<string, string>; // Optional headers
   createdAt?: string; // Optional, might be assigned by backend
   updatedAt?: string; // Optional, might be assigned by backend
