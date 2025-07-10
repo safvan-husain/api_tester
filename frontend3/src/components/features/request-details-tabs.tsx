@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { IRequest, UpdateRequestPayload } from '../../../lib/api/requests';
+import { IRequest, UpdateRequestPayload } from '@/lib/api/requests';
 import { useRequestStore } from '@/store/request-store';
 import { toast } from "sonner"; // For displaying success/error messages
 import { debounce } from 'lodash'; // For debouncing updates
@@ -45,7 +45,7 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
             try {
                 await storeUpdateRequest(updatedPayload, updateRequestMutationFn);
                 toast.success("Request updated!");
-            } catch (error) {
+            } catch (error: any) {
                 toast.error(`Failed to update request: ${error.message || 'Unknown error'}`);
                 console.error("Update request failed:", error);
                 // Optionally revert local state if needed, though Zustand handles optimistic updates if designed that way.
@@ -121,7 +121,7 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                     console.log('Sending request:', { ...selectedRequest, ...payloadForSend });
                     // TODO: Implement actual API call for sending the request and handling response
                     toast.info("Send functionality not fully implemented yet.");
-                } catch (error) {
+                } catch (error: any) {
                     toast.error(`Failed to save before sending: ${error.message || 'Unknown error'}`);
                     return; // Don't proceed to send if save failed
                 }

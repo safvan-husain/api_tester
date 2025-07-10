@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { IRequest, CreateRequestPayload, UpdateRequestPayload, useGetRequests } from '../../lib/api/requests';
+import { IRequest, CreateRequestPayload, UpdateRequestPayload, useGetRequests } from '@/lib/api/requests';
 import React from 'react'; // Import React for useEffect in useInitializeRequestStore
 
 // Define the store's state and actions

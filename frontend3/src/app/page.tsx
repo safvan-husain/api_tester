@@ -4,7 +4,7 @@ import React from 'react'; // useEffect removed as it's in useInitializeRequestS
 import Sidebar from '@/components/features/sidebar'; // Corrected import path
 import RequestDetailsTabs from '../components/features/request-details-tabs';
 import { useInitializeRequestStore, useRequestStore } from '../store/request-store';
-import { useCreateRequest, useUpdateRequest } from '../../lib/api/requests';
+import { useCreateRequest, useUpdateRequest } from '@/lib/api/requests';
 import { Toaster } from "sonner" // For displaying success/error messages
 import { toast } from "sonner"
 
