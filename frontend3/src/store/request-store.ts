@@ -107,7 +107,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
                 selectedRequest: newRequest, // Select the newly created and saved request
                 isMutating: false,
             }));
-            console.log("New request saved and selected:", newRequest);
+            
         } catch (e: any) {
             console.error("Failed to save new request:", e);
             set({ mutationError: e, isMutating: false });
@@ -121,7 +121,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 // Custom hook to initialize the store with data from React Query
 export const useInitializeRequestStore = () => {
     const { data: fetchedRequests, isLoading: queryIsLoading, error: queryError } = useGetRequests();
-    const { requests, setRequests, setLoading, setError, isLoading: storeIsLoading } = useRequestStore();
+    const { setLoading, setError } = useRequestStore(); // Only get setters, not state that causes re-renders
 
     React.useEffect(() => {
         if (queryIsLoading) {
@@ -130,16 +130,19 @@ export const useInitializeRequestStore = () => {
     }, [queryIsLoading, setLoading]);
 
     React.useEffect(() => {
-        if (fetchedRequests && !storeIsLoading) { // Check !storeIsLoading to prevent race conditions if store is already being updated
-            // Only update if fetchedRequests is different from current requests to avoid infinite loops
-            if (JSON.stringify(fetchedRequests) !== JSON.stringify(requests)) {
-                setRequests(fetchedRequests);
-            } else if (requests.length === 0 && fetchedRequests.length === 0) {
-                // Edge case: if both are empty, ensure loading is false
-                setLoading(false);
+        if (fetchedRequests) {
+            const currentRequests = useRequestStore.getState().requests;
+            // Only update if fetchedRequests is different from current requests
+            // A simple length check and then a more robust comparison if lengths match
+            if (fetchedRequests.length !== currentRequests.length ||
+                JSON.stringify(fetchedRequests) !== JSON.stringify(currentRequests)) {
+                useRequestStore.setState({ requests: fetchedRequests, isLoading: false });
+            } else if (fetchedRequests.length === 0 && currentRequests.length === 0) {
+                // If both are empty, ensure loading is false
+                useRequestStore.setState({ isLoading: false });
             }
         }
-    }, [fetchedRequests, requests, setRequests, storeIsLoading, setLoading]);
+    }, [fetchedRequests]);
 
     React.useEffect(() => {
         if (queryError) {
@@ -148,5 +151,5 @@ export const useInitializeRequestStore = () => {
     }, [queryError, setError]);
 
     // The store's isLoading and error will reflect the query's state.
-    return useRequestStore((state) => ({ isLoading: state.isLoading, error: state.error }));
+    return { isLoading: queryIsLoading, error: queryError };
 };

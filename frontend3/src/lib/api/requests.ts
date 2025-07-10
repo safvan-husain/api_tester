@@ -64,7 +64,12 @@ export type UpdateRequestPayload = Partial<Omit<IRequest, 'id' | 'createdAt' | '
 
 export const updateRequestApi = async (payload: UpdateRequestPayload): Promise<IRequest> => {
   const { id, ...updateData } = payload;
-  const { data } = await apiClient.put(`/requests/${id}`, updateData);
+ console.log(`payload ${JSON.stringify(payload)}`);
+  const { data, status } = await apiClient.patch(`/requests/${id}`, updateData);
+  if(status !== 200) {
+    throw new Error(`Failed to update request, ${data.message}`);
+  }
+
   return data;
 };
 
