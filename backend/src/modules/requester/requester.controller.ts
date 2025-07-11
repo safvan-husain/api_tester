@@ -1,4 +1,13 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UsePipes,
+  ValidationPipe,
+  Logger,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { RequesterService } from './requester.service';
 import { SendRequestDto } from './dto/send-request.dto';
 
@@ -11,7 +20,9 @@ export class RequesterController {
   @Post('send')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Enable validation and transformation
   async sendRequest(@Body() sendRequestDto: SendRequestDto) {
-    this.logger.log(`Received request to proxy: ${sendRequestDto.method} ${sendRequestDto.url}`);
+    this.logger.log(
+      `Received request to proxy: ${sendRequestDto.method} ${sendRequestDto.url}`,
+    );
     try {
       const result = await this.requesterService.sendRequest(sendRequestDto);
       // The service already returns an object with status, headers, data.
@@ -22,7 +33,10 @@ export class RequesterController {
       // For now, let's assume the client (frontend) will interpret the nested status.
       return result;
     } catch (error) {
-      this.logger.error(`Error in sendRequest controller: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in sendRequest controller: ${error.message}`,
+        error.stack,
+      );
       // The service should throw an object with status and message.
       // If not, default to 500.
       throw new HttpException(

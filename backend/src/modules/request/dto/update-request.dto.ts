@@ -1,4 +1,4 @@
-import { IsUrl, IsEnum, IsObject, IsOptional } from 'class-validator';
+import { IsUrl, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 
 /**
  * Data Transfer Object (DTO) for updating an existing API request.
@@ -12,6 +12,9 @@ export class UpdateRequestDto {
   @IsUrl()
   @IsOptional()
   url?: string;
+
+  @IsString()
+  name?: string;
 
   /**
    * The new HTTP method for the API request.
@@ -34,7 +37,7 @@ export class UpdateRequestDto {
    * New or updated body for the API request. Must be an object if provided.
    * @example { "newKey": "newValue" }
    */
-  @IsObject()
+  // @IsObject()
   @IsOptional()
-  body?: Record<string, any>;
+  body?: string;
 }

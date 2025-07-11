@@ -27,7 +27,10 @@ export class RequesterService {
       const response = await firstValueFrom(
         this.httpService.request(config).pipe(
           catchError((error: AxiosError) => {
-            this.logger.error(`Axios error making outbound request: ${error.message}`, error.stack);
+            this.logger.error(
+              `Axios error making outbound request: ${error.message}`,
+              error.stack,
+            );
             // This error is for issues with the request sending itself (e.g., network error)
             // not for HTTP error statuses, which are handled by validateStatus.
             if (error.response) {
@@ -51,7 +54,9 @@ export class RequesterService {
         ),
       );
 
-      this.logger.log(`Received response from ${config.url}: Status ${response.status}`);
+      this.logger.log(
+        `Received response from ${config.url}: Status ${response.status}`,
+      );
 
       return {
         status: response.status,
@@ -60,10 +65,15 @@ export class RequesterService {
       };
     } catch (error) {
       // This will catch errors thrown from the catchError block or other unexpected errors
-      this.logger.error(`Failed to process request for ${url}: ${error.message || 'Unknown error'}`, error.stack);
+      this.logger.error(
+        `Failed to process request for ${url}: ${error.message || 'Unknown error'}`,
+        error.stack,
+      );
       // Ensure a consistent error structure is returned to the controller
       throw {
-        message: error.message || 'An unexpected error occurred while proxying the request.',
+        message:
+          error.message ||
+          'An unexpected error occurred while proxying the request.',
         status: error.status || 500,
         data: error.data, // Include if available
         headers: error.headers, // Include if available

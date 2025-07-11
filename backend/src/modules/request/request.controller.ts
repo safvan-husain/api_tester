@@ -64,6 +64,7 @@ export class RequestController {
   @Get()
   async findAll(): Promise<Request[]> {
     this.logger.log('Received GET /requests request');
+    this.logger.log('Received PATCH /requests');
     const results = await this.requestService.findAll();
     this.logger.log(`Responding to GET /requests with ${results.length} items`);
     return results;

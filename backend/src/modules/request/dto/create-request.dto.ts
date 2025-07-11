@@ -35,7 +35,7 @@ export class CreateRequestDto {
    * Relevant for methods like POST or PUT.
    * @example { "key": "value" }
    */
-  @IsObject()
+  // @IsObject()
   @IsOptional()
-  body?: Record<string, any>;
+  body?: any;
 }
