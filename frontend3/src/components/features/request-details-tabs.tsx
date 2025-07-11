@@ -11,6 +11,18 @@ import { useRequestStore } from '@/store/request-store';
 import { toast } from "sonner"; // For displaying success/error messages
 import { debounce } from 'lodash'; // For debouncing updates
 
+// Define a type for the API response structure
+interface ApiResponse {
+    data: any;
+    status: number;
+    headers: Record<string, string>;
+}
+
+interface ApiError {
+    error: string;
+    details?: any;
+}
+
 const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
 interface RequestDetailsTabsProps {
@@ -18,12 +30,17 @@ interface RequestDetailsTabsProps {
 }
 
 const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMutationFn }) => {
-    const { selectedRequest, updateRequest: storeUpdateRequest, isMutating } = useRequestStore();
+    const { selectedRequest, updateRequest: storeUpdateRequest, isMutating: isSaving } = useRequestStore(); // Renamed isMutating to isSaving for clarity
 
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [method, setMethod] = useState('GET');
-    const [body, setBody] = useState<string | undefined>('');
+    const [body, setBody] = useState<string | undefined>(''); // Keep body as string for Textarea
+
+    // State for API response
+    const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+    const [apiError, setApiError] = useState<ApiError | null>(null);
+    const [isSending, setIsSending] = useState(false); // For loading state of the send action
 
     useEffect(() => {
         if (selectedRequest) {
@@ -31,11 +48,16 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
             setUrl(selectedRequest.url || '');
             setMethod(selectedRequest.method || 'GET');
             setBody(selectedRequest.body ? JSON.stringify(selectedRequest.body, null, 2) : '');
+            // Reset response/error state when selected request changes
+            setApiResponse(null);
+            setApiError(null);
         } else {
             setName('New Request');
             setUrl('');
             setMethod('GET');
             setBody('');
+            setApiResponse(null);
+            setApiError(null);
         }
     }, [selectedRequest]);
 
@@ -104,45 +126,89 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
     const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('body', e.target.value);
 
     const handleSend = async () => {
-        if (selectedRequest) {
-            // Ensure latest values from local state are used for sending,
-            // as debounced update might not have fired yet.
-            const payloadForSend: UpdateRequestPayload = {
-                id: selectedRequest.id,
-                name, url, method, body: body
+        if (!selectedRequest || !url) {
+            toast.error("No request selected or URL is empty.");
+            return;
+        }
+        if (selectedRequest.id.startsWith('draft-')) {
+            toast.warning("Please save the new request first. 'Send' is for saved requests.");
+            return;
+        }
+
+        // Reset previous response/error
+        setApiResponse(null);
+        setApiError(null);
+        setIsSending(true);
+
+        // Ensure latest values from local state are used for sending,
+        // as debounced update might not have fired yet.
+        const payloadForSave: UpdateRequestPayload = {
+            id: selectedRequest.id,
+            name, url, method, body // body is already a string from local state
+        };
+
+        try {
+            // Cancel any pending debounced update to avoid race conditions
+            debouncedUpdateRequest.cancel();
+            // Save the current state of the request before sending
+            await storeUpdateRequest(payloadForSave, updateRequestMutationFn);
+            toast.success("Request updated, now sending...");
+
+            // Prepare request for the backend proxy
+            let parsedBody;
+            try {
+                // Only parse if body is not empty and is valid JSON
+                parsedBody = body && body.trim() !== '' ? JSON.parse(body) : undefined;
+            } catch (e) {
+                toast.error("Body is not valid JSON. Sending as plain text or empty.");
+                // Depending on desired behavior, you might want to send `body` as is,
+                // or prevent sending, or indicate it's not JSON.
+                // For now, we'll let it be undefined if parsing fails,
+                // or send as string if backend handles non-JSON.
+                // The backend /api/send-request expects a JSON body for its 'body' field.
+                // Let's assume the backend can handle if `body` field within the JSON payload is a string.
+                parsedBody = body; // Send raw string if not JSON
+            }
+
+            const sendPayload = {
+                url,
+                method,
+                body: parsedBody, // This is the body of the *target* request
+                headers: {}, // TODO: Implement headers input and send them
             };
 
-            // If it's a new request that hasn't been saved to backend yet, this 'Send' could trigger its first save.
-            // However, current flow: 'Add New' creates it, then subsequent changes update.
-            // If it's a draft, it should have been saved by `onAddNewRequest` in sidebar.
-            // So, this send should ideally be for an existing request.
+            const response = await fetch('/api/send-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(sendPayload),
+            });
 
-            // If the request is not a draft, update it before sending (or ensure it's updated)
-            if (!selectedRequest.id.startsWith('draft-')) {
-                // Cancel any pending debounced update to avoid race conditions
-                debouncedUpdateRequest.cancel();
-                try {
-                    await storeUpdateRequest(payloadForSend, updateRequestMutationFn);
-                    toast.success("Request saved, now sending...");
-                    // Actual send logic (calling an API with the request details)
-                    console.log('Sending request:', { ...selectedRequest, ...payloadForSend });
-                    // TODO: Implement actual API call for sending the request and handling response
-                    toast.info("Send functionality not fully implemented yet.");
-                } catch (error: any) {
-                    toast.error(`Failed to save before sending: ${error.message || 'Unknown error'}`);
-                    return; // Don't proceed to send if save failed
-                }
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Error from our /api/send-request route itself (e.g., 500 internal error)
+                // or if the proxy returned a structured error.
+                const errorData = result as ApiError;
+                toast.error(`API Proxy Error: ${errorData.error || response.statusText}`);
+                setApiError(errorData);
+                setApiResponse(null);
             } else {
-                // This case (sending a pure local draft) should ideally be handled by a "Save & Send"
-                // or by ensuring "Add New Request" properly saves it first.
-                toast.warning("Please save the new request first (via 'Add New Request' which now auto-saves). This 'Send' is for saved requests.");
-                console.log('Attempting to send a draft request that might not exist on backend:', selectedRequest);
-                // For now, we'll log and prevent actual send if it's a local draft.
-                return;
+                 // Success from our /api/send-request route, result contains { data, status, headers }
+                const responseData = result as ApiResponse;
+                toast.success(`Request sent! Status: ${responseData.status}`);
+                setApiResponse(responseData);
+                setApiError(null);
             }
-        } else {
-            console.log('Attempted to send with no selected request.');
-            toast.error("No request selected to send.");
+
+        } catch (error: any) {
+            console.error("Failed to send request:", error);
+            toast.error(`Failed to send request: ${error.message || 'Unknown error'}`);
+            setApiError({ error: error.message || 'An unknown error occurred' });
+            setApiResponse(null);
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -168,11 +234,11 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                     value={name}
                     onChange={handleNameChange}
                     className="text-lg font-semibold"
-                    disabled={isMutating}
+                    disabled={isSaving || isSending}
                 />
             </div>
             <div className="flex items-center space-x-2 mb-4">
-                <Select value={method} onValueChange={handleMethodChange} disabled={isMutating}>
+                <Select value={method} onValueChange={handleMethodChange} disabled={isSaving || isSending}>
                     <SelectTrigger className="w-[120px]">
                         <SelectValue placeholder="Method" />
                     </SelectTrigger>
@@ -190,10 +256,14 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                     value={url}
                     onChange={handleUrlChange}
                     className="flex-grow"
-                    disabled={isMutating}
+                    disabled={isSaving || isSending}
                 />
-                <Button onClick={handleSend} disabled={isMutating || selectedRequest.id.startsWith('draft-')} title={selectedRequest.id.startsWith('draft-') ? "Save new request first via Sidebar" : "Send Request"}>
-                    {isMutating ? 'Saving...' : 'Send'}
+                <Button
+                    onClick={handleSend}
+                    disabled={isSaving || isSending || selectedRequest.id.startsWith('draft-') || !url.trim()}
+                    title={selectedRequest.id.startsWith('draft-') ? "Save new request first via Sidebar" : (!url.trim() ? "URL cannot be empty" : "Send Request")}
+                >
+                    {isSending ? 'Sending...' : (isSaving ? 'Saving...' : 'Send')}
                 </Button>
             </div>
 
@@ -217,10 +287,10 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                 <TabsContent value="body" className="flex-grow flex flex-col">
                     <Textarea
                         placeholder='Enter request body (e.g., JSON, XML)'
-                        value={typeof body === 'string' ? body : JSON.stringify(body, null, 2)}
+                        value={body} // body is now always string from local state
                         onChange={handleBodyChange}
-                        className='flex-grow resize-none'
-                        disabled={isMutating}
+                        className='flex-grow resize-none font-mono text-sm' // Added font-mono and text-sm for better code readability
+                        disabled={isSaving || isSending}
                     />
                 </TabsContent>
                 <TabsContent value="auth" className="flex-grow">
@@ -229,6 +299,56 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* API Response/Error Display Section */}
+            {(isSending || apiResponse || apiError) && ( // Show this section if sending, or if there's a response/error
+                <div className="mt-6 flex-shrink-0"> {/* Use mt-6 for spacing, flex-shrink-0 to prevent shrinking */}
+                    <h3 className="text-lg font-semibold mb-2">Response</h3>
+                    {isSending && (
+                        <div className="p-4 border rounded-md bg-muted">
+                            <p className="text-sm text-muted-foreground">Sending request...</p>
+                        </div>
+                    )}
+                    {apiError && (
+                        <div className="p-4 border rounded-md bg-destructive/10 text-destructive">
+                            <p className="text-sm font-semibold">Error: {apiError.error}</p>
+                            {apiError.details && (
+                                <pre className="mt-2 text-xs whitespace-pre-wrap break-all">
+                                    {JSON.stringify(apiError.details, null, 2)}
+                                </pre>
+                            )}
+                        </div>
+                    )}
+                    {apiResponse && (
+                        <Tabs defaultValue="response-body" className="border rounded-md">
+                            <TabsList className="bg-muted/50">
+                                <TabsTrigger value="response-body">Body</TabsTrigger>
+                                <TabsTrigger value="response-headers">Headers</TabsTrigger>
+                                <TabsTrigger value="response-status">Status</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="response-body" className="p-0">
+                                <pre className="p-4 text-xs whitespace-pre-wrap break-all max-h-96 overflow-y-auto bg-muted/30 rounded-b-md">
+                                    {typeof apiResponse.data === 'object'
+                                        ? JSON.stringify(apiResponse.data, null, 2)
+                                        : String(apiResponse.data)}
+                                </pre>
+                            </TabsContent>
+                            <TabsContent value="response-headers" className="p-0">
+                                <pre className="p-4 text-xs whitespace-pre-wrap break-all max-h-96 overflow-y-auto bg-muted/30 rounded-b-md">
+                                    {Object.entries(apiResponse.headers)
+                                        .map(([key, value]) => `${key}: ${value}`)
+                                        .join('\n')}
+                                </pre>
+                            </TabsContent>
+                            <TabsContent value="response-status" className="p-0">
+                                <div className="p-4 text-sm bg-muted/30 rounded-b-md">
+                                    <p>Status: <span className={`font-semibold ${apiResponse.status >= 200 && apiResponse.status < 300 ? 'text-green-600' : 'text-red-600'}`}>{apiResponse.status}</span></p>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
