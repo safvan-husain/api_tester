@@ -177,7 +177,12 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                 headers: {}, // TODO: Implement headers input and send them
             };
 
-            const response = await fetch('/api/send-request', {
+            // TODO: Make the backend URL configurable, perhaps via an environment variable.
+            // Assuming NestJS backend runs on port 3001 locally.
+            const nestJsBackendUrl = process.env.NEXT_PUBLIC_NESTJS_BACKEND_URL || 'http://localhost:3001';
+            const endpoint = `${nestJsBackendUrl}/api/v1/requester/send`;
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

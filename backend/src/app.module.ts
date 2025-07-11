@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RequestModule } from './modules/request/request.module';
 import { CheckpointModule } from './modules/checkpoint/checkpoint.module';
+import { RequesterModule } from './modules/requester/requester.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CheckpointModule } from './modules/checkpoint/checkpoint.module';
     }),
     RequestModule,
     CheckpointModule,
+    RequesterModule, // Added RequesterModule here
   ],
   controllers: [AppController],
   providers: [AppService],
