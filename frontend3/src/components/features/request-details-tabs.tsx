@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+// Using standard HTML checkbox as @radix-ui/react-checkbox is not installed
+// import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2 } from 'lucide-react'; // For delete icon
 import { IRequest, UpdateRequestPayload } from '@/lib/api/requests';
 import { useRequestStore } from '@/store/request-store';
 import { toast } from "sonner"; // For displaying success/error messages
@@ -35,7 +38,14 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [method, setMethod] = useState('GET');
-    const [body, setBody] = useState<string | undefined>(''); // Keep body as string for Textarea
+    const [body, setBody] = useState<string>(''); // Keep body as string for Textarea, ensure it's always string
+
+    // Query Params State
+    // Adding an 'id' for React key prop when rendering lists of inputs
+    const [queryParams, setQueryParams] = useState<Array<{ id: string; key: string; value: string; enabled: boolean }>>([]);
+
+    // Authorization State
+    const [auth, setAuth] = useState<IRequest['auth']>({ type: 'none' });
 
     // State for API response
     const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
@@ -47,15 +57,37 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
             setName(selectedRequest.name || 'New Request');
             setUrl(selectedRequest.url || '');
             setMethod(selectedRequest.method || 'GET');
-            setBody(selectedRequest.body ? JSON.stringify(selectedRequest.body, null, 2) : '');
+            // Ensure body is a string for the Textarea. If selectedRequest.body is an object, stringify it.
+            if (typeof selectedRequest.body === 'object' && selectedRequest.body !== null) {
+                setBody(JSON.stringify(selectedRequest.body, null, 2));
+            } else if (typeof selectedRequest.body === 'string') {
+                setBody(selectedRequest.body);
+            } else {
+                setBody('');
+            }
+            // Initialize queryParams, generating a local unique ID for each for list rendering
+            // TODO: Use a proper UUID generator here if available, for more robust unique IDs
+            setQueryParams(
+                selectedRequest.queryParams?.map((p, index) => ({
+                    id: `qp-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // Generate a simple unique ID
+                    key: p.key,
+                    value: p.value,
+                    enabled: p.enabled,
+                })) || []
+            );
+            setAuth(selectedRequest.auth || { type: 'none' });
+
             // Reset response/error state when selected request changes
             setApiResponse(null);
             setApiError(null);
         } else {
+            // Reset all fields for a new or deselected request
             setName('New Request');
             setUrl('');
             setMethod('GET');
             setBody('');
+            setQueryParams([]);
+            setAuth({ type: 'none' });
             setApiResponse(null);
             setApiError(null);
         }
@@ -63,67 +95,114 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
 
     // Debounced version of the store update function
     const debouncedUpdateRequest = useCallback(
-        debounce(async (updatedPayload: UpdateRequestPayload) => {
+        debounce(async (updatedData: Partial<Omit<IRequest, 'id' | 'createdAt' | 'updatedAt'>>) => {
+            if (!selectedRequest || selectedRequest.id.startsWith('draft-')) {
+                // Don't send updates for draft requests or if no request is selected
+                return;
+            }
             try {
-                await storeUpdateRequest(updatedPayload, updateRequestMutationFn);
+                const payload: UpdateRequestPayload = {
+                    id: selectedRequest.id,
+                    ...updatedData,
+                };
+                await storeUpdateRequest(payload, updateRequestMutationFn);
+                // toast.success("Request auto-saved!"); // Potentially too noisy
             } catch (error: any) {
-                toast.error(`Failed to update request: ${error.message || 'Unknown error'}`);
-                console.error("Update request failed:", error);
-                // Optionally revert local state if needed, though Zustand handles optimistic updates if designed that way.
-                // For now, we're relying on the store's state after the attempt.
+                toast.error(`Failed to auto-save request: ${error.message || 'Unknown error'}`);
+                console.error("Auto-save request failed:", error);
             }
         }, 1000), // 1000ms debounce delay
-        [storeUpdateRequest, updateRequestMutationFn]
+        [selectedRequest, storeUpdateRequest, updateRequestMutationFn] // Added selectedRequest to dependencies
     );
 
+    // Centralized function to gather current state and trigger the debounced update
+    const triggerDebouncedUpdate = useCallback(() => {
+        if (selectedRequest && !selectedRequest.id.startsWith('draft-')) {
+            // For auto-save, send the raw string body. Parsing happens only for actual 'Send' action.
+            // The IRequest.body type is now string | undefined.
+            const queryParamsToSave = queryParams.map(({ id, ...rest }) => rest); // Strip client-side 'id'
 
-    const handleFieldChange = (field: keyof Omit<IRequest, 'id' | 'createdAt' | 'updatedAt'>, value: string) => {
-        if (selectedRequest) {
-            // Update local state immediately for responsiveness
-            let currentLocalState = { name, url, method, body };
-            switch (field) {
-                case 'name': setName(value); currentLocalState.name = value; break;
-                case 'url': setUrl(value); currentLocalState.url = value; break;
-                case 'method': setMethod(value); currentLocalState.method = value; break;
-                case 'body':
-                    setBody(value);
-                    try {
-                        currentLocalState.body = JSON.parse(value);
-                    } catch (e) {
-                        // handle invalid json
-                    }
-                    break;
-            }
-
-            // Prepare payload for debounced update
-            console.log(`field ${field} value ${value}`);
-            const updatedPayload: UpdateRequestPayload = {
-                id: selectedRequest.id,
-                name: field === 'name' ? value : name,
-                url: field === 'url' ? value : url,
-                method: field === 'method' ? value : method,
-                body: field === 'body' ? value : '',
-            };
-            // If it's a new request (ID is a draft ID), don't try to update backend yet.
-            // It should be saved first via "Add New Request" which creates it on backend.
-            if (!selectedRequest.id.startsWith('draft-')) {
-                debouncedUpdateRequest(updatedPayload);
-            } else {
-                // For draft requests, update the store locally without backend call (if store supports it)
-                // Or, simply update local state and rely on the "Save" (which is "Add New" for drafts)
-                // For now, local state is updated, and store's `updateRequest` handles backend.
-                // The current `storeUpdateRequest` expects a backend call.
-                // This part might need refinement if we want pure local drafts before first save.
-                // Let's assume for now that `selectedRequest` always has a backend-valid ID after creation.
-                console.log("Draft request changed locally, will be saved with next 'Send' or explicit save action if implemented.");
-            }
+            debouncedUpdateRequest({
+                name,
+                url,
+                method,
+                body: body, // Send the raw string body
+                queryParams: queryParamsToSave,
+                auth,
+            });
         }
+    }, [name, url, method, body, queryParams, auth, selectedRequest, debouncedUpdateRequest]);
+
+
+    // Handlers for basic fields - these now just update local state.
+    // A useEffect will watch these states and call triggerDebouncedUpdate.
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setName(e.target.value);
+    };
+    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUrl(e.target.value);
+    };
+    const handleMethodChange = (value: string) => {
+        setMethod(value);
+    };
+    const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setBody(e.target.value);
     };
 
-    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange('name', e.target.value);
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange('url', e.target.value);
-    const handleMethodChange = (value: string) => handleFieldChange('method', value);
-    const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange('body', e.target.value);
+    // Query Param Handlers
+    const handleAddQueryParam = () => {
+        // TODO: Use a proper UUID generator for more robust unique IDs if available
+        const newId = `qp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        setQueryParams(prevParams => [...prevParams, { id: newId, key: '', value: '', enabled: true }]);
+        // The useEffect watching queryParams will trigger the debounced update
+    };
+
+    const handleQueryParamChange = (id: string, field: 'key' | 'value', value: string) => {
+        setQueryParams(prevParams =>
+            prevParams.map(p => (p.id === id ? { ...p, [field]: value } : p))
+        );
+        // The useEffect watching queryParams will trigger the debounced update
+    };
+
+    const handleToggleQueryParam = (id: string) => {
+        setQueryParams(prevParams =>
+            prevParams.map(p => (p.id === id ? { ...p, enabled: !p.enabled } : p))
+        );
+        // The useEffect watching queryParams will trigger the debounced update
+    };
+
+    const handleRemoveQueryParam = (id: string) => {
+        setQueryParams(prevParams => prevParams.filter(p => p.id !== id));
+        // The useEffect watching queryParams will trigger the debounced update
+    };
+
+    // Placeholder for Auth Handler (to be implemented in next step)
+    const handleAuthChange = (newAuth: IRequest['auth']) => {
+        setAuth(newAuth); // Directly set auth state
+        // The useEffect watching auth will trigger the debounced update
+    };
+
+
+    // useEffect to trigger debounced update when relevant form fields change.
+    // This ensures that any change to these fields will eventually lead to an auto-save.
+    const isInitialMount = React.useRef(true);
+    useEffect(() => {
+        // Don't trigger update on initial mount/population from selectedRequest.
+        // The `useEffect` that populates from `selectedRequest` handles the initial state.
+        // This `useEffect` is for changes made by the user *after* initial population.
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+        triggerDebouncedUpdate();
+    }, [name, url, method, body, queryParams, auth, triggerDebouncedUpdate]);
+
+    // Reset isInitialMount when selectedRequest changes, so the above useEffect
+    // correctly triggers for user edits on a newly selected request.
+    useEffect(() => {
+        isInitialMount.current = true;
+    }, [selectedRequest]);
+
 
     const handleSend = async () => {
         if (!selectedRequest || !url) {
@@ -150,31 +229,71 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
         try {
             // Cancel any pending debounced update to avoid race conditions
             debouncedUpdateRequest.cancel();
-            // Save the current state of the request before sending
-            await storeUpdateRequest(payloadForSave, updateRequestMutationFn);
-            toast.success("Request updated, now sending...");
 
-            // Prepare request for the backend proxy
-            let parsedBody;
-            try {
-                // Only parse if body is not empty and is valid JSON
-                parsedBody = body && body.trim() !== '' ? JSON.parse(body) : undefined;
-            } catch (e) {
-                toast.error("Body is not valid JSON. Sending as plain text or empty.");
-                // Depending on desired behavior, you might want to send `body` as is,
-                // or prevent sending, or indicate it's not JSON.
-                // For now, we'll let it be undefined if parsing fails,
-                // or send as string if backend handles non-JSON.
-                // The backend /api/send-request expects a JSON body for its 'body' field.
-                // Let's assume the backend can handle if `body` field within the JSON payload is a string.
-                parsedBody = body; // Send raw string if not JSON
+            // Filter out the 'id' from queryParams before saving
+            const queryParamsToSave = queryParams.map(({ id, ...rest }) => rest);
+
+            // Save the current state of the request (including queryParams and auth) before sending
+            // Body is saved as a string, as per user request.
+            const currentRequestStatePayload: UpdateRequestPayload = {
+                id: selectedRequest.id,
+                name,
+                url, // Base URL
+                method,
+                body: body, // Save raw string body
+                queryParams: queryParamsToSave,
+                auth,
+                // TODO: Add actual headers from a Headers tab here eventually
+            };
+
+            await storeUpdateRequest(currentRequestStatePayload, updateRequestMutationFn);
+            toast.success("Request state saved, now sending...");
+
+            // Prepare body FOR SENDING (parse to JSON)
+            let parsedBodyForSendOnly: Record<string, any> | string | undefined = undefined;
+            if (body.trim() !== '') {
+                try {
+                    parsedBodyForSendOnly = JSON.parse(body);
+                } catch (e) {
+                    // As per original logic, if body is not JSON, it was sent as raw string to proxy.
+                    // However, the SendRequestDto on backend expects 'body: any'.
+                    // For robust behavior, let's stick to sending JSON or nothing if it's meant to be structured.
+                    // If user wants to send plain text, Content-Type header should indicate that.
+                    // For now, if it's not JSON, we'll show an error as before the body type change.
+                    toast.error("Request body is not valid JSON. Please correct it or ensure Content-Type is appropriate if sending plain text.");
+                    setIsSending(false);
+                    return;
+                }
             }
 
+            // Construct URL with Query Params for sending
+            const finalUrl = new URL(url);
+            queryParams.forEach(param => {
+                if (param.enabled && param.key) {
+                    finalUrl.searchParams.append(param.key, param.value);
+                }
+            });
+
+            // Prepare Headers for sending
+            const sendingHeaders: Record<string, string> = {};
+            // TODO: Populate from a Headers UI in the future. For now, start empty or with defaults.
+            // e.g., if (body) sendingHeaders['Content-Type'] = 'application/json';
+
+            if (auth?.type === 'bearer' && auth.token) {
+                sendingHeaders['Authorization'] = `Bearer ${auth.token}`;
+            } else if (auth?.type === 'basic' && auth.username) {
+                const credentials = btoa(`${auth.username}:${auth.password || ''}`);
+                sendingHeaders['Authorization'] = `Basic ${credentials}`;
+            }
+            // Add other headers from a (future) Headers tab here
+            // For example: selectedRequest.headers?.forEach(h => sendingHeaders[h.key] = h.value);
+
+
             const sendPayload = {
-                url,
+                url: finalUrl.toString(), // URL with query params
                 method,
-                body: parsedBody, // This is the body of the *target* request
-                headers: {}, // TODO: Implement headers input and send them
+                body: parsedBodyForSendOnly, // Parsed body of the *target* request (or raw string if not JSON and proxy handles it)
+                headers: sendingHeaders, // Headers including Auth
             };
 
             // TODO: Make the backend URL configurable, perhaps via an environment variable.
@@ -279,14 +398,57 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                     <TabsTrigger value="body">Body</TabsTrigger>
                     <TabsTrigger value="auth">Authorization</TabsTrigger>
                 </TabsList>
-                <TabsContent value="params" className="flex-grow">
-                    <div className="p-4 border rounded-md h-full">
-                        <p className="text-sm text-muted-foreground">Query parameters editor will be here.</p>
+                <TabsContent value="params" className="flex-grow flex flex-col space-y-4 p-1">
+                    <div className="flex-grow p-4 border rounded-md h-full overflow-y-auto">
+                        {queryParams.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No query parameters defined.</p>
+                        )}
+                        {queryParams.map((param) => (
+                            <div key={param.id} className="flex items-center space-x-2 mb-2">
+                                <input
+                                    type="checkbox"
+                                    id={`param-enabled-${param.id}`}
+                                    checked={param.enabled}
+                                    onChange={() => handleToggleQueryParam(param.id)}
+                                    disabled={isSaving || isSending}
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <Input
+                                    type="text"
+                                    placeholder="Key"
+                                    value={param.key}
+                                    onChange={(e) => handleQueryParamChange(param.id, 'key', e.target.value)}
+                                    className="flex-grow"
+                                    disabled={isSaving || isSending}
+                                />
+                                <Input
+                                    type="text"
+                                    placeholder="Value"
+                                    value={param.value}
+                                    onChange={(e) => handleQueryParamChange(param.id, 'value', e.target.value)}
+                                    className="flex-grow"
+                                    disabled={isSaving || isSending}
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveQueryParam(param.id)}
+                                    disabled={isSaving || isSending}
+                                    title="Remove parameter"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
+                    <Button onClick={handleAddQueryParam} disabled={isSaving || isSending} className="shrink-0 self-start">
+                        Add Parameter
+                    </Button>
                 </TabsContent>
                 <TabsContent value="headers" className="flex-grow">
+                    {/* TODO: Implement Headers Editor similar to Query Params */}
                     <div className="p-4 border rounded-md h-full">
-                        <p className="text-sm text-muted-foreground">Headers editor will be here.</p>
+                        <p className="text-sm text-muted-foreground">Headers editor will be here. (To be implemented)</p>
                     </div>
                 </TabsContent>
                 <TabsContent value="body" className="flex-grow flex flex-col">
@@ -298,9 +460,80 @@ const RequestDetailsTabs: React.FC<RequestDetailsTabsProps> = ({ updateRequestMu
                         disabled={isSaving || isSending}
                     />
                 </TabsContent>
-                <TabsContent value="auth" className="flex-grow">
-                    <div className="p-4 border rounded-md h-full">
-                        <p className="text-sm text-muted-foreground">Authorization options will be here (e.g., Bearer Token).</p>
+                <TabsContent value="auth" className="flex-grow flex flex-col space-y-4 p-1">
+                    <div className="p-4 border rounded-md h-full space-y-4">
+                        <div>
+                            <label htmlFor="auth-type-select" className="block text-sm font-medium text-gray-700 mb-1">Auth Type</label>
+                            <Select
+                                value={auth?.type || 'none'}
+                                onValueChange={(newType: 'none' | 'bearer' | 'basic') => {
+                                    if (newType === 'none') {
+                                        handleAuthChange({ type: 'none' });
+                                    } else if (newType === 'bearer') {
+                                        handleAuthChange({ type: 'bearer', token: auth?.type === 'bearer' ? auth.token : '' });
+                                    } else if (newType === 'basic') {
+                                        handleAuthChange({ type: 'basic', username: auth?.type === 'basic' ? auth.username : '', password: auth?.type === 'basic' ? auth.password : '' });
+                                    }
+                                }}
+                                disabled={isSaving || isSending}
+                            >
+                                <SelectTrigger id="auth-type-select" className="w-[200px]">
+                                    <SelectValue placeholder="Select auth type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    <SelectItem value="bearer">Bearer Token</SelectItem>
+                                    <SelectItem value="basic">Basic Auth</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {auth?.type === 'bearer' && (
+                            <div>
+                                <label htmlFor="bearer-token-input" className="block text-sm font-medium text-gray-700 mb-1">Bearer Token</label>
+                                <Input
+                                    id="bearer-token-input"
+                                    type="text"
+                                    placeholder="Bearer Token"
+                                    value={auth.token || ''}
+                                    onChange={(e) => handleAuthChange({ type: 'bearer', token: e.target.value })}
+                                    className="w-full"
+                                    disabled={isSaving || isSending}
+                                />
+                            </div>
+                        )}
+
+                        {auth?.type === 'basic' && (
+                            <div className="space-y-2">
+                                <div>
+                                    <label htmlFor="basic-auth-username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                    <Input
+                                        id="basic-auth-username"
+                                        type="text"
+                                        placeholder="Username"
+                                        value={auth.username || ''}
+                                        onChange={(e) => handleAuthChange({ ...auth, type: 'basic', username: e.target.value })}
+                                        className="w-full"
+                                        disabled={isSaving || isSending}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="basic-auth-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                    <Input
+                                        id="basic-auth-password"
+                                        type="password" // Use password type for masking
+                                        placeholder="Password"
+                                        value={auth.password || ''}
+                                        onChange={(e) => handleAuthChange({ ...auth, type: 'basic', password: e.target.value })}
+                                        className="w-full"
+                                        disabled={isSaving || isSending}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                         {auth?.type === 'none' && (
+                            <p className="text-sm text-muted-foreground">No authorization method selected.</p>
+                        )}
                     </div>
                 </TabsContent>
             </Tabs>

@@ -13,8 +13,10 @@ export interface IRequest {
   name: string;
   url: string;
   method: string;
-  body?: string; // Optional body, now an object
+  body?: string; // Body is a string
   headers?: Record<string, string>; // Optional headers
+  queryParams?: Array<{ key: string; value: string; enabled: boolean }>;
+  auth?: { type: 'bearer'; token: string; } | { type: 'none'; } | { type: 'basic'; username?: string; password?: string; };
   createdAt?: string; // Optional, might be assigned by backend
   updatedAt?: string; // Optional, might be assigned by backend
 }
@@ -34,7 +36,7 @@ export const useGetRequests = () => {
 
 // Create a new request
 // Use Omit to exclude 'id' and 'createdAt', 'updatedAt' as they are usually backend-generated
-export type CreateRequestPayload = Omit<IRequest, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateRequestPayload = Omit<IRequest, 'id' | 'createdAt' | 'updatedAt' | 'body'> & { body?: Record<string, any> | string }; // Allow string for body during creation if needed initially
 
 export const createRequest = async (payload: CreateRequestPayload): Promise<IRequest> => {
   const { data } = await apiClient.post('/requests', payload);
